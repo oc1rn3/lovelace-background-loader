@@ -20,9 +20,11 @@
       this.minOverlay = Number(config.min_overlay ?? 0.08);
       this.maxOverlay = Number(config.max_overlay ?? 0.20);
 
+      // 70% alt + 30% neu
       this.overlaySmoothingFactor = 0.30;
       this.currentOverlayLevel = this.defaultOverlay;
 
+      // Schwellwerte für "Bild praktisch unverändert"
       this.minBrightnessDelta = 0.015;
       this.minSignatureDelta = 0.008;
 
@@ -35,6 +37,7 @@
       this.observer = null;
       this.entityWatcher = null;
       this.updateInProgress = false;
+      this.reloadOnForeground = null;
 
       this.init();
     }
@@ -44,29 +47,41 @@
       this.createDom();
       this.loadInitialImage();
 
-		const enableForegroundReload =
-		  this.interval > 0 || !this.entityId || this.entityMode === "trigger";
+      const autoForegroundReload =
+        this.interval > 0 || !this.entityId || this.entityMode === "trigger";
 
-		this.visibilityHandler = () => {
-		  if (!enableForegroundReload) return;
-		  if (!document.hidden) this.updateImage("visibilitychange");
-		};
+      this.reloadOnForeground =
+        typeof this.config.reload_on_foreground === "boolean"
+          ? this.config.reload_on_foreground
+          : autoForegroundReload;
 
-		this.focusHandler = () => {
-		  if (!enableForegroundReload) return;
-		  this.updateImage("focus");
-		};
+      this.visibilityHandler = () => {
+        if (!this.reloadOnForeground) return;
+        if (!document.hidden) this.updateImage("visibilitychange");
+      };
 
-		document.addEventListener("visibilitychange", this.visibilityHandler);
-		window.addEventListener("focus", this.focusHandler);
+      this.focusHandler = () => {
+        if (!this.reloadOnForeground) return;
+        this.updateImage("focus");
+      };
 
-		if (this.interval > 0) {
-		  this.timer = setInterval(() => this.updateImage("interval"), this.interval);
-		}
+      document.addEventListener("visibilitychange", this.visibilityHandler);
+      window.addEventListener("focus", this.focusHandler);
 
-		if (this.entityId) {
-		  this.startEntityWatcher();
-		}
+      if (this.interval > 0) {
+        this.timer = setInterval(() => this.updateImage("interval"), this.interval);
+      }
+
+      if (this.entityId) {
+        this.startEntityWatcher();
+      }
+
+      this.log("Initialized", {
+        interval: this.interval,
+        entityId: this.entityId,
+        entityMode: this.entityMode,
+        reloadOnForeground: this.reloadOnForeground
+      });
     }
 
     destroy() {
@@ -180,7 +195,7 @@
 
     log(...args) {
       if (this.debug) {
-        console.log("[HA Background V5.1]", ...args);
+        console.log("[HA Background V5.3]", ...args);
       }
     }
 
@@ -342,7 +357,11 @@
 
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) {
-          return { brightness: null, signature: null, analysis: "canvas context unavailable" };
+          return {
+            brightness: null,
+            signature: null,
+            analysis: "canvas context unavailable"
+          };
         }
 
         ctx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
@@ -378,7 +397,11 @@
         }
 
         if (!count || !signatureCount) {
-          return { brightness: null, signature: null, analysis: "no pixels read" };
+          return {
+            brightness: null,
+            signature: null,
+            analysis: "no pixels read"
+          };
         }
 
         return {
@@ -514,6 +537,7 @@
         if (!meaningfulChange) {
           this.setOverlay(smoothedOverlay);
           this.updateStoredImageMetrics(analysis.brightness, analysis.signature);
+
           this.log("Update skipped visually", {
             trigger,
             brightness: analysis.brightness,
@@ -622,7 +646,7 @@
           this.loader.destroy();
           this.loader = null;
           this.currentConfigKey = null;
-          console.log("[HA Background V5.1] Disabled for this dashboard");
+          console.log("[HA Background V5.3] Disabled for this dashboard");
         }
         return;
       }
@@ -639,7 +663,7 @@
 
       this.currentConfigKey = newKey;
       this.loader = new HABackgroundLoader(bgConfig);
-      console.log("[HA Background V5.1] Enabled for this dashboard", bgConfig);
+      console.log("[HA Background V5.3] Enabled for this dashboard", bgConfig);
     }
   }
 
