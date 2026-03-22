@@ -142,23 +142,22 @@ reload_on_foreground: false
 → volle Kontrolle, kein unnötiger Reload, saubere Darstellung
 
 
-# Installation Method 1: Manual
-Step 1
-Install background loader by copying background-loader.js from this repo to <config directory>/www/background-loader.js on your Home Assistant instance.
+# Installationsmethode 1: Manuell
+## Schritt 1
+Installieren Sie den Hintergrundlader, indem Du die Datei background-loader.js aus diesem Repository in das Verzeichnis <Konfigurationsverzeichnis>/www/background-loader.js Ihre Home Assistant-Instanz kopierst.
 
-Step 2
-Add the resource to your configuration. If you are in yaml mode follow the lovelace docs. If you are using the UI to manage resources then go you <your-ha-address>/config/lovelace/resources and add the URL /local/animated-background.js as a javascript module.
+## Schritt 2
+Fügen die Ressource Deiner Konfiguration hinzu. Wenn Sie im YAML-Modus arbeiten, folgen Sie der Lovelace-Dokumentation. Wenn Sie die Benutzeroberfläche zur Ressourcenverwaltung verwenden, gehen Sie zu <Ihre-HA-Adresse>/config/lovelace/resources und fügen Sie die URL /local/background-loader.js als JavaScript-Modul hinzu.
 
-Step 3
-Add the custom element in the root of your ui-lovelace.yaml (or Lovelace raw configuration if not in yaml mode), not in a view or card.
+## Schritt 3
+Fügen Sie das benutzerdefinierte Element im Stammverzeichnis Ihrer ui-lovelace.yaml-Datei (oder in der Lovelace-Rohkonfiguration, falls Sie nicht im YAML-Modus arbeiten) hinzu, nicht in einer Ansicht oder Karte.
 
-Installation Method 2: HACS
-Step 1
-Make sure you have HACS installed, add https://github.com/oc1rn3/lovelace-background-loader as custom repo and find Animated Background in the plug section, and install.
+# Installationsmethode 2: HACS
+## Schritt 1
+Stellen Sie sicher, dass HACS installiert ist. Fügen Sie https://github.com/oc1rn3/lovelace-background-loader als benutzerdefiniertes Repository hinzu, suchen Sie im Bereich „Plugins“ nach „Homeassistant Lovelace Background-Loader“ und installieren Sie es.
 
-Step 2
-Add the resource to your configuration. If you are in yaml mode follow the lovelace docs and add the URL /hacsfiles/lovelace-background-loader/background-loader.js as a module. If you are using the UI to manage resources then click the button at the top of the Animated Background HACS page to automatically add it to your resources.
+## Schritt 2
+Fügen Sie die Ressource Ihrer Konfiguration hinzu. Wenn Sie im YAML-Modus arbeiten, folgen Sie der Lovelace-Dokumentation und fügen Sie die URL /hacsfiles/lovelace-background-loader/background-loader.js als Modul hinzu. Wenn Sie die Benutzeroberfläche zur Ressourcenverwaltung verwenden, klicken Sie auf die Schaltfläche oben auf der HACS-Seite für „Homeassistant Lovelace Background-Loader“, um die Ressource automatisch hinzuzufügen.
 
-Step 3
-Add the custom element in the root of your ui-lovelace.yaml (or Lovelace raw configuration if not in yaml mode), not in a view or card.
-
+## Schritt 3
+Fügen Sie das benutzerdefinierte Element im Stammverzeichnis Ihrer ui-lovelace.yaml (oder der Lovelace-Rohkonfiguration, falls Sie nicht im YAML-Modus arbeiten) hinzu, nicht in einer Ansicht oder Karte.
