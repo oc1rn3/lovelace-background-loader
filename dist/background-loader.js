@@ -7,31 +7,34 @@
       this.config = config;
 
       this.baseUrl = config.url || "http://has-images.has.ocsne.snerheb.com/webcam_rbc.jpg";
-      this.interval = Number(config.interval ?? 300000); // 5 Minuten
+      this.entityId = config.entity || null;
+      this.entityMode = config.entity_mode || "trigger"; // "trigger" | "url"
+
+      this.interval = Number(config.interval ?? 300000);
       this.fadeDuration = Number(config.fade_duration ?? 50);
       this.activeIndex = 0;
       this.layers = [];
       this.started = false;
 
-      // Overlay-Werte
       this.defaultOverlay = Number(config.default_overlay ?? 0.12);
       this.minOverlay = Number(config.min_overlay ?? 0.08);
       this.maxOverlay = Number(config.max_overlay ?? 0.20);
 
-      // Glättung: 70% alt + 30% neu
       this.overlaySmoothingFactor = 0.30;
       this.currentOverlayLevel = this.defaultOverlay;
 
-      // Bildvergleich
       this.minBrightnessDelta = 0.015;
       this.minSignatureDelta = 0.008;
 
       this.lastBrightness = null;
       this.lastSignature = null;
+      this.lastEntityValue = null;
 
       this.debug = Boolean(config.debug ?? false);
       this.timer = null;
       this.observer = null;
+      this.entityWatcher = null;
+      this.updateInProgress = false;
 
       this.init();
     }
@@ -51,12 +54,25 @@
 
       document.addEventListener("visibilitychange", this.visibilityHandler);
       window.addEventListener("focus", this.focusHandler);
+
+      if (this.interval > 0) {
+        this.timer = setInterval(() => this.updateImage("interval"), this.interval);
+      }
+
+      if (this.entityId) {
+        this.startEntityWatcher();
+      }
     }
 
     destroy() {
       if (this.timer) {
         clearInterval(this.timer);
         this.timer = null;
+      }
+
+      if (this.entityWatcher) {
+        clearInterval(this.entityWatcher);
+        this.entityWatcher = null;
       }
 
       if (this.observer) {
@@ -159,8 +175,28 @@
 
     log(...args) {
       if (this.debug) {
-        console.log("[HA Background V5]", ...args);
+        console.log("[HA Background V5.1]", ...args);
       }
+    }
+
+    getHomeAssistant() {
+      return document.querySelector("home-assistant");
+    }
+
+    getEntityState(entityId) {
+      const ha = this.getHomeAssistant();
+      if (!ha) return null;
+      return ha.hass?.states?.[entityId]?.state ?? null;
+    }
+
+    resolveBaseUrl() {
+      if (this.entityId && this.entityMode === "url") {
+        const entityValue = this.getEntityState(this.entityId);
+        if (entityValue && entityValue !== "unknown" && entityValue !== "unavailable") {
+          return entityValue;
+        }
+      }
+      return this.baseUrl;
     }
 
     makeHATransparent() {
@@ -247,9 +283,36 @@
       this.observer = observer;
     }
 
+    startEntityWatcher() {
+      this.lastEntityValue = this.getEntityState(this.entityId);
+      this.log("Entity watcher started", {
+        entity: this.entityId,
+        mode: this.entityMode,
+        initialValue: this.lastEntityValue
+      });
+
+      this.entityWatcher = setInterval(() => {
+        const currentValue = this.getEntityState(this.entityId);
+        if (currentValue === null || currentValue === this.lastEntityValue) return;
+
+        const oldValue = this.lastEntityValue;
+        this.lastEntityValue = currentValue;
+
+        this.log("Entity changed", {
+          entity: this.entityId,
+          mode: this.entityMode,
+          oldValue,
+          newValue: currentValue
+        });
+
+        this.updateImage(`entity:${this.entityId}`);
+      }, 1000);
+    }
+
     buildUrl() {
-      const sep = this.baseUrl.includes("?") ? "&" : "?";
-      return `${this.baseUrl}${sep}t=${Date.now()}`;
+      const resolvedBaseUrl = this.resolveBaseUrl();
+      const sep = resolvedBaseUrl.includes("?") ? "&" : "?";
+      return `${resolvedBaseUrl}${sep}t=${Date.now()}`;
     }
 
     preload(url) {
@@ -411,8 +474,6 @@
           smoothedOverlay,
           analysis: analysis.analysis
         });
-
-        this.timer = setInterval(() => this.updateImage("interval"), this.interval);
       } catch (err) {
         this.log("Initial load failed", {
           url,
@@ -423,7 +484,8 @@
     }
 
     async updateImage(trigger = "manual") {
-      if (!this.started) return;
+      if (!this.started || this.updateInProgress) return;
+      this.updateInProgress = true;
 
       const nextIndex = this.activeIndex === 0 ? 1 : 0;
       const currentLayer = this.layers[this.activeIndex];
@@ -486,6 +548,8 @@
           error: err && err.message ? err.message : err
         });
         console.error("Background update failed, keeping previous image:", err);
+      } finally {
+        this.updateInProgress = false;
       }
     }
   }
@@ -553,7 +617,7 @@
           this.loader.destroy();
           this.loader = null;
           this.currentConfigKey = null;
-          console.log("[HA Background V5] Disabled for this dashboard");
+          console.log("[HA Background V5.1] Disabled for this dashboard");
         }
         return;
       }
@@ -570,7 +634,7 @@
 
       this.currentConfigKey = newKey;
       this.loader = new HABackgroundLoader(bgConfig);
-      console.log("[HA Background V5] Enabled for this dashboard", bgConfig);
+      console.log("[HA Background V5.1] Enabled for this dashboard", bgConfig);
     }
   }
 
