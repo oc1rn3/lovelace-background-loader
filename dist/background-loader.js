@@ -44,24 +44,29 @@
       this.createDom();
       this.loadInitialImage();
 
-      this.visibilityHandler = () => {
-        if (!document.hidden) this.updateImage("visibilitychange");
-      };
+		const enableForegroundReload =
+		  this.interval > 0 || !this.entityId || this.entityMode === "trigger";
 
-      this.focusHandler = () => {
-        this.updateImage("focus");
-      };
+		this.visibilityHandler = () => {
+		  if (!enableForegroundReload) return;
+		  if (!document.hidden) this.updateImage("visibilitychange");
+		};
 
-      document.addEventListener("visibilitychange", this.visibilityHandler);
-      window.addEventListener("focus", this.focusHandler);
+		this.focusHandler = () => {
+		  if (!enableForegroundReload) return;
+		  this.updateImage("focus");
+		};
 
-      if (this.interval > 0) {
-        this.timer = setInterval(() => this.updateImage("interval"), this.interval);
-      }
+		document.addEventListener("visibilitychange", this.visibilityHandler);
+		window.addEventListener("focus", this.focusHandler);
 
-      if (this.entityId) {
-        this.startEntityWatcher();
-      }
+		if (this.interval > 0) {
+		  this.timer = setInterval(() => this.updateImage("interval"), this.interval);
+		}
+
+		if (this.entityId) {
+		  this.startEntityWatcher();
+		}
     }
 
     destroy() {
