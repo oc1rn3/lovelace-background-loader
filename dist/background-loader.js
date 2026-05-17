@@ -24,7 +24,9 @@
       this.overlaySmoothingFactor = 0.30;
       this.currentOverlayLevel = this.defaultOverlay;
 
-      // Schwellwerte für "Bild praktisch unverändert"
+      this.skipUnchanged = Boolean(config.skip_unchanged ?? false);
+
+      // Schwellwerte für "Bild praktisch unverändert" (nur bei skip_unchanged)
       this.minBrightnessDelta = 0.015;
       this.minSignatureDelta = 0.008;
 
@@ -80,7 +82,8 @@
         interval: this.interval,
         entityId: this.entityId,
         entityMode: this.entityMode,
-        reloadOnForeground: this.reloadOnForeground
+        reloadOnForeground: this.reloadOnForeground,
+        skipUnchanged: this.skipUnchanged
       });
     }
 
@@ -526,17 +529,14 @@
         const img = await this.preload(url);
         const analysis = this.analyzeImage(img);
 
-        const meaningfulChange = this.hasMeaningfulImageChange(
-          analysis.brightness,
-          analysis.signature
-        );
-
         const targetOverlay = this.brightnessToOverlay(analysis.brightness);
         const smoothedOverlay = this.smoothOverlay(targetOverlay);
 
-        if (!meaningfulChange) {
+        if (
+          this.skipUnchanged &&
+          !this.hasMeaningfulImageChange(analysis.brightness, analysis.signature)
+        ) {
           this.setOverlay(smoothedOverlay);
-          this.updateStoredImageMetrics(analysis.brightness, analysis.signature);
 
           this.log("Update skipped visually", {
             trigger,

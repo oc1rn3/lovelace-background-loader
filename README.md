@@ -29,6 +29,7 @@ bg_loader:
   fade_duration: 30
   interval: 0
   reload_on_foreground: false
+  skip_unchanged: false
   debug: true
 ```
 
@@ -72,6 +73,16 @@ Zeitgesteuertes Nachladen (ms), 0 = deaktiviert.
 ### reload_on_foreground
 
 Neuladen bei Fokuswechsel: - true → aktiv - false → deaktiviert
+
+### skip_unchanged
+
+Optionales Ueberspringen von Bildern, die anhand der Helligkeitsanalyse fast
+unveraendert wirken.
+
+Standard: `false`
+
+Empfehlung fuer Webcam-/Nachtbilder: `false`, damit ein erfolgreich geladenes
+Bild immer sichtbar geschaltet wird.
 
 ### debug
 
