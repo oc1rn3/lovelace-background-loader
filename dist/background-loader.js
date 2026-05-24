@@ -19,6 +19,9 @@
       this.defaultOverlay = Number(config.default_overlay ?? 0.12);
       this.minOverlay = Number(config.min_overlay ?? 0.08);
       this.maxOverlay = Number(config.max_overlay ?? 0.20);
+      this.vignetteEnabled = Boolean(config.vignette ?? false);
+      this.vignetteOpacity = Number(config.vignette_opacity ?? 0.28);
+      this.vignetteSize = Number(config.vignette_size ?? 220);
 
       // 70% alt + 30% neu
       this.overlaySmoothingFactor = 0.30;
@@ -83,7 +86,8 @@
         entityId: this.entityId,
         entityMode: this.entityMode,
         reloadOnForeground: this.reloadOnForeground,
-        skipUnchanged: this.skipUnchanged
+        skipUnchanged: this.skipUnchanged,
+        vignetteEnabled: this.vignetteEnabled
       });
     }
 
@@ -154,7 +158,7 @@
         #ha-bg-overlay {
           position: absolute;
           inset: 0;
-          background: rgba(0, 0, 0, ${this.defaultOverlay});
+          background: ${this.buildOverlayBackground(this.defaultOverlay)};
           transition: background 160ms linear;
           pointer-events: none;
         }
@@ -444,9 +448,43 @@
       );
     }
 
+    clampOpacity(value) {
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(0, Math.min(1, value));
+    }
+
+    buildOverlayBackground(level) {
+      const base = this.clampOpacity(level);
+      if (!this.vignetteEnabled) {
+        return `rgba(0, 0, 0, ${base})`;
+      }
+
+      const edge = this.clampOpacity(this.vignetteOpacity);
+      const shoulder = this.clampOpacity(edge * 0.55);
+      const size = Math.max(1, Math.round(this.vignetteSize));
+      const soft = Math.max(size + 1, Math.round(size * 2.1));
+
+      return `
+          linear-gradient(to right,
+            rgba(0, 0, 0, ${edge}) 0,
+            rgba(0, 0, 0, ${shoulder}) ${size}px,
+            transparent ${soft}px,
+            transparent calc(100% - ${soft}px),
+            rgba(0, 0, 0, ${shoulder}) calc(100% - ${size}px),
+            rgba(0, 0, 0, ${edge}) 100%),
+          linear-gradient(to bottom,
+            rgba(0, 0, 0, ${edge}) 0,
+            rgba(0, 0, 0, ${shoulder}) ${size}px,
+            transparent ${soft}px,
+            transparent calc(100% - ${soft}px),
+            rgba(0, 0, 0, ${shoulder}) calc(100% - ${size}px),
+            rgba(0, 0, 0, ${edge}) 100%),
+          rgba(0, 0, 0, ${base})`;
+    }
+
     setOverlay(level) {
       this.currentOverlayLevel = level;
-      this.overlay.style.background = `rgba(0, 0, 0, ${level})`;
+      this.overlay.style.background = this.buildOverlayBackground(level);
     }
 
     hasMeaningfulImageChange(brightness, signature) {

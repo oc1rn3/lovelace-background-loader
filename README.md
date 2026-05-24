@@ -26,6 +26,9 @@ bg_loader:
   default_overlay: 0.46
   min_overlay: 0.22
   max_overlay: 0.76
+  vignette: true
+  vignette_opacity: 0.28
+  vignette_size: 220
   fade_duration: 30
   interval: 0
   reload_on_foreground: false
@@ -61,6 +64,26 @@ Startwert für Abdunklung.
 ### min_overlay / max_overlay
 
 Grenzen für Overlay.
+
+### vignette
+
+Optionaler Randverlauf direkt im globalen Hintergrund-Overlay. Dadurch werden
+helle Bildränder weicher abgedunkelt, ohne dass Lovelace-Karten oder das
+Dashboard-Grid dafür zweckentfremdet werden müssen.
+
+Standard: `false`
+
+### vignette_opacity
+
+Maximale Zusatzabdunklung am äußeren Rand.
+
+Standard: `0.28`
+
+### vignette_size
+
+Breite des Randverlaufs in Pixeln.
+
+Standard: `220`
 
 ### fade_duration
 
