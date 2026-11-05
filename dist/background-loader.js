@@ -1,4 +1,13 @@
 (() => {
+  const VERSION = "5.5";
+  // Only HA layout shells belong here; never traverse card/sidebar/dialog internals.
+  const SHELL_SELECTORS = [
+    "home-assistant", "home-assistant-main", "ha-drawer",
+    "partial-panel-resolver", "ha-panel-lovelace", "hui-root",
+    "ha-app-layout", "app-header-layout", "hui-view-container",
+    "hui-view-background", "hui-view", "hui-panel-view",
+  ].join(",");
+
   if (window.__haBackgroundLoaderManagerInitialized) return;
   window.__haBackgroundLoaderManagerInitialized = true;
 
@@ -40,6 +49,7 @@
       this.debug = Boolean(config.debug ?? false);
       this.timer = null;
       this.observer = null;
+      this.transparencyStyles = new Map();
       this.entityWatcher = null;
       this.updateInProgress = false;
       this.reloadOnForeground = null;
@@ -107,6 +117,9 @@
         this.observer = null;
       }
 
+      for (const style of this.transparencyStyles.values()) style.remove();
+      this.transparencyStyles.clear();
+
       if (this.visibilityHandler) {
         document.removeEventListener("visibilitychange", this.visibilityHandler);
       }
@@ -163,9 +176,6 @@
           pointer-events: none;
         }
 
-        home-assistant {
-          background: transparent !important;
-        }
       `;
       document.head.appendChild(style);
     }
@@ -202,7 +212,7 @@
 
     log(...args) {
       if (this.debug) {
-        console.log("[HA Background V5.3]", ...args);
+        console.log(`[HA Background V${VERSION}]`, ...args);
       }
     }
 
@@ -227,71 +237,39 @@
     }
 
     makeHATransparent() {
-      const transparentSelectors = [
-        "home-assistant",
-        "home-assistant-main",
-        "ha-drawer partial-panel-resolver",
-        "partial-panel-resolver",
-        "ha-panel-lovelace",
-        "hui-root",
-        "ha-app-layout",
-        "app-header-layout",
-        ".content",
-        "hui-view",
-        "hui-panel-view",
-        ".view",
-      ];
-
-      transparentSelectors.forEach((selector) => {
-        document.querySelectorAll(selector).forEach((el) => {
-          el.style.background = "transparent";
-          el.style.backgroundColor = "transparent";
-        });
-      });
-
-      const ha = document.querySelector("home-assistant");
-      if (ha && ha.shadowRoot) {
-        this.makeShadowTransparent(ha.shadowRoot);
+      // Document observers do not cross shadow boundaries. Track each layout root.
+      for (const [root, style] of this.transparencyStyles) {
+        if (root.host && !root.host.isConnected) {
+          style.remove();
+          this.transparencyStyles.delete(root);
+        }
+      }
+      this.makeShadowTransparent(document);
+      if (this.observer) {
+        this.observer.disconnect();
+        for (const root of this.transparencyStyles.keys()) {
+          this.observer.observe(root, { childList: true, subtree: true });
+        }
       }
     }
 
     makeShadowTransparent(root) {
-      const selectors = [
-        "home-assistant-main",
-        "partial-panel-resolver",
-        "ha-panel-lovelace",
-        "hui-root",
-        "ha-app-layout",
-        "app-header-layout",
-        ".content",
-        "hui-view",
-        "hui-panel-view",
-        ".view",
-      ];
-
-      selectors.forEach((selector) => {
-        root.querySelectorAll(selector).forEach((el) => {
-          el.style.background = "transparent";
-          el.style.backgroundColor = "transparent";
-        });
-      });
-
-      root.querySelectorAll("*").forEach((el) => {
-        if (
-          el.tagName === "HA-PANEL-LOVELACE" ||
-          el.tagName === "HUI-ROOT" ||
-          el.tagName === "HUI-VIEW" ||
-          el.tagName === "HUI-PANEL-VIEW"
-        ) {
-          el.style.background = "transparent";
-          el.style.backgroundColor = "transparent";
+      const existingStyle = this.transparencyStyles.get(root);
+      if (existingStyle && !existingStyle.isConnected) this.transparencyStyles.delete(root);
+      if (!this.transparencyStyles.has(root)) {
+        const style = document.createElement("style");
+        style.dataset.haBackgroundLoader = "transparency";
+        style.textContent = `${SHELL_SELECTORS} { background: transparent !important; }`;
+        // Old layouts used these wrappers. Restrict them to their owning shell.
+        if (["HUI-ROOT", "HA-APP-LAYOUT", "APP-HEADER-LAYOUT"].includes(root.host?.tagName)) {
+          style.textContent += ".content, .view { background: transparent !important; }";
         }
-      });
+        (root === document ? document.head : root).appendChild(style);
+        this.transparencyStyles.set(root, style);
+      }
 
-      root.querySelectorAll("*").forEach((el) => {
-        if (el.shadowRoot) {
-          this.makeShadowTransparent(el.shadowRoot);
-        }
+      root.querySelectorAll(SHELL_SELECTORS).forEach((el) => {
+        if (el.shadowRoot) this.makeShadowTransparent(el.shadowRoot);
       });
     }
 
@@ -308,6 +286,7 @@
       });
 
       this.observer = observer;
+      this.makeHATransparent();
     }
 
     startEntityWatcher() {
@@ -684,13 +663,15 @@
           this.loader.destroy();
           this.loader = null;
           this.currentConfigKey = null;
-          console.log("[HA Background V5.3] Disabled for this dashboard");
+          console.log(`[HA Background V${VERSION}] Disabled for this dashboard`);
         }
         return;
       }
 
       const newKey = this.buildConfigKey(bgConfig);
       if (this.loader && this.currentConfigKey === newKey) {
+        // attachShadow() itself emits no mutation. Catch late component upgrades.
+        this.loader.makeHATransparent();
         return;
       }
 
@@ -701,7 +682,7 @@
 
       this.currentConfigKey = newKey;
       this.loader = new HABackgroundLoader(bgConfig);
-      console.log("[HA Background V5.3] Enabled for this dashboard", bgConfig);
+      console.log(`[HA Background V${VERSION}] Enabled for this dashboard`, bgConfig);
     }
   }
 
