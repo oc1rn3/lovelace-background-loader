@@ -1,5 +1,5 @@
 (() => {
-  const VERSION = "5.5";
+  const VERSION = "5.6";
   // Only HA layout shells belong here; never traverse card/sidebar/dialog internals.
   const SHELL_SELECTORS = [
     "home-assistant", "home-assistant-main", "ha-drawer",
@@ -260,6 +260,11 @@
         const style = document.createElement("style");
         style.dataset.haBackgroundLoader = "transparency";
         style.textContent = `${SHELL_SELECTORS} { background: transparent !important; }`;
+        if (root.host?.tagName === "HOME-ASSISTANT-MAIN") {
+          // HA paints the panel fallback on a pseudo-element inside its isolated
+          // stacking context. A transparent resolver host does not clear it.
+          style.textContent += "partial-panel-resolver::before { background: transparent !important; }";
+        }
         // Old layouts used these wrappers. Restrict them to their owning shell.
         if (["HUI-ROOT", "HA-APP-LAYOUT", "APP-HEADER-LAYOUT"].includes(root.host?.tagName)) {
           style.textContent += ".content, .view { background: transparent !important; }";
